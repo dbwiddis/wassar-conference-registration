@@ -59,3 +59,36 @@ function isRegistrationOpen() {
   if (!cutoff) return true;
   return new Date() <= new Date(cutoff);
 }
+
+function getFields() {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Fields');
+  if (!sheet) return {};
+  var data = sheet.getDataRange().getValues();
+  var fields = {};
+  for (var i = 1; i < data.length; i++) {
+    fields[data[i][0]] = { label: data[i][1], description: data[i][2] || '' };
+  }
+  return fields;
+}
+
+function getChapters() {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Chapters');
+  if (!sheet) return [];
+  var data = sheet.getDataRange().getValues();
+  var chapters = [];
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0]) chapters.push(data[i][0]);
+  }
+  return chapters;
+}
+
+function getAffiliations() {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Affiliations');
+  if (!sheet) return [];
+  var data = sheet.getDataRange().getValues();
+  var affils = [];
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0]) affils.push(data[i][0]);
+  }
+  return affils;
+}

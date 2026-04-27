@@ -11,7 +11,7 @@ function setupSheets() {
   var config = getOrCreateSheet(ss, 'Config');
   config.clear();
   config.getRange(1, 1, 1, 2).setValues([['Key', 'Value']]).setFontWeight('bold');
-  config.getRange(2, 1, 12, 2).setValues([
+  config.getRange(2, 1, 14, 2).setValues([
     ['EventName', '2027 Washington SAR Conference'],
     ['EventDates', 'April 23-25, 2027'],
     ['RegistrationPrefix', 'WSSAR27'],
@@ -23,7 +23,9 @@ function setupSheets() {
     ['ConferenceContact', 'ronnm@outlook.com or 425-533-1229'],
     ['PaymentContact', 'treasurer@washingtonsar.org or 831-392-5967'],
     ['StripeWebhookSecret', ''],
-    ['StatusPageUrl', '']
+    ['StatusPageUrl', ''],
+    ['DonationNote', 'Washington SAR is a 501(c)(3) nonprofit. Donations are tax-deductible. EIN: XX-XXXXXXX'],
+    ['LodgingNote', 'Book your room at the Seattle Airport Marriott using our group rate: [link]']
   ]);
   config.autoResizeColumns(1, 2);
 
@@ -58,6 +60,59 @@ function setupSheets() {
 
   // Registrations tab
   var regs = getOrCreateSheet(ss, 'Registrations');
+
+  // Fields tab — customizable labels and descriptions for form fields
+  var fields = getOrCreateSheet(ss, 'Fields');
+  fields.clear();
+  fields.getRange(1, 1, 1, 3).setValues([['FieldID', 'Label', 'Description']]).setFontWeight('bold');
+  fields.getRange(2, 1, 10, 3).setValues([
+    ['email', 'Email Address', 'Your confirmation and payment link will be sent here'],
+    ['phone', 'Phone Number', 'For follow-up if needed'],
+    ['name', 'Compatriot Name', ''],
+    ['chapter', 'Chapter', 'Select your SAR chapter'],
+    ['officeTitle', 'Office/Title', 'Your current office or title in your chapter, state, or national society'],
+    ['affiliations', 'Compatriot Affiliations', 'Select all that apply'],
+    ['additionalDetails', 'Additional Details', 'Color guard, special needs, accessibility requirements, etc.'],
+    ['lodging', 'Where are you staying?', ''],
+    ['registrationCount', 'How many are registering?', ''],
+    ['specialMealRequests', 'Special Meal Requests', 'Gluten-free, allergies, dietary restrictions, etc.']
+  ]);
+  fields.autoResizeColumns(1, 3);
+
+  // Chapters tab — dropdown options for chapter selection
+  var chapters = getOrCreateSheet(ss, 'Chapters');
+  chapters.clear();
+  chapters.getRange(1, 1, 1, 1).setValues([['Chapter']]).setFontWeight('bold');
+  chapters.getRange(2, 1, 11, 1).setValues([
+    ['Cascade Centennial'],
+    ['Fort Vancouver'],
+    ['George Rogers Clark'],
+    ['Grand Coulee'],
+    ['John Paul Jones'],
+    ['Olympia'],
+    ['Puget Sound'],
+    ['Rainier'],
+    ['Ranger'],
+    ['Seattle'],
+    ['Other (not a Washington SAR member)']
+  ]);
+  chapters.autoResizeColumns(1, 1);
+
+  // Affiliations tab — checkbox/multi-select options
+  var affils = getOrCreateSheet(ss, 'Affiliations');
+  affils.clear();
+  affils.getRange(1, 1, 1, 1).setValues([['Affiliation']]).setFontWeight('bold');
+  affils.getRange(2, 1, 6, 1).setValues([
+    ['WASSAR Color Guard'],
+    ['WASSAR Board of Managers'],
+    ['NSSAR'],
+    ['DAR'],
+    ['C.A.R.'],
+    ['Other']
+  ]);
+  affils.autoResizeColumns(1, 1);
+
+  // Registrations tab (continued)
   regs.clear();
   regs.getRange(1, 1, 1, 17).setValues([[
     'RegistrationID', 'Timestamp', 'Email', 'Phone', 'Name', 'Chapter',
@@ -84,7 +139,7 @@ function setupSheets() {
   ]]).setFontWeight('bold');
   payments.setFrozenRows(1);
 
-  SpreadsheetApp.getUi().alert('Setup complete! Update Config, Meals, and Pricing tabs with your event data.');
+  Logger.log('Setup complete! Update Config, Meals, and Pricing tabs with your event data.');
 }
 
 function getOrCreateSheet(ss, name) {

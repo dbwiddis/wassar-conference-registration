@@ -40,12 +40,15 @@ function doPost(e) {
 // ── Registration Data for the Form ──
 
 function getFormData() {
-  return {
+  return JSON.stringify({
     config: getAllConfig(),
     meals: getMealOptions(),
     pricing: getPricing(),
+    fields: getFields(),
+    chapters: getChapters(),
+    affiliations: getAffiliations(),
     isOpen: isRegistrationOpen()
-  };
+  });
 }
 
 // ── Registration CRUD ──
@@ -60,42 +63,46 @@ function generateRegistrationId() {
 }
 
 function submitRegistration(formData) {
-  if (!isRegistrationOpen()) {
-    return { status: 'error', message: 'Registration is closed.' };
+  try {
+    if (!isRegistrationOpen()) {
+      return JSON.stringify({ status: 'error', message: 'Registration is closed.' });
+    }
+
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Registrations');
+    var existingRow = findRegistrationRowByEmail(formData.email);
+
+    var registrationId;
+    if (existingRow > 0) {
+      // Update existing registration
+      registrationId = sheet.getRange(existingRow, 1).getValue();
+      updateRegistrationRow(sheet, existingRow, registrationId, formData);
+    } else {
+      // New registration
+      registrationId = generateRegistrationId();
+      appendRegistrationRow(sheet, registrationId, formData);
+    }
+
+    // Save guests
+    saveGuests(registrationId, formData.guests || []);
+
+    // Calculate totals and send email
+    var total = calculateTotal(formData);
+    var stripe = calculateStripeFees(total);
+    var stripeUrl = createStripeUrl(stripe.stripeAmount, registrationId, formData.email);
+
+    sendConfirmationEmail(formData, registrationId, total, stripe, stripeUrl);
+
+    return JSON.stringify({
+      status: 'ok',
+      registrationId: registrationId,
+      total: total,
+      totalWithFees: stripe.totalWithFees,
+      fees: stripe.fees,
+      stripeUrl: stripeUrl
+    });
+  } catch (e) {
+    return JSON.stringify({ status: 'error', message: e.message });
   }
-
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Registrations');
-  var existingRow = findRegistrationRowByEmail(formData.email);
-
-  var registrationId;
-  if (existingRow > 0) {
-    // Update existing registration
-    registrationId = sheet.getRange(existingRow, 1).getValue();
-    updateRegistrationRow(sheet, existingRow, registrationId, formData);
-  } else {
-    // New registration
-    registrationId = generateRegistrationId();
-    appendRegistrationRow(sheet, registrationId, formData);
-  }
-
-  // Save guests
-  saveGuests(registrationId, formData.guests || []);
-
-  // Calculate totals and send email
-  var total = calculateTotal(formData);
-  var stripe = calculateStripeFees(total);
-  var stripeUrl = createStripeUrl(stripe.stripeAmount, registrationId, formData.email);
-
-  sendConfirmationEmail(formData, registrationId, total, stripe, stripeUrl);
-
-  return {
-    status: 'ok',
-    registrationId: registrationId,
-    total: total,
-    totalWithFees: stripe.totalWithFees,
-    fees: stripe.fees,
-    stripeUrl: stripeUrl
-  };
 }
 
 function appendRegistrationRow(sheet, registrationId, data) {

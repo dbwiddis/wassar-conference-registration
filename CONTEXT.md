@@ -48,38 +48,37 @@ The `.clasp.json` is in `src/` (not repo root). Always use `--force` on push.
 | Payments | Payment records (auto from Stripe webhook, manual for Zelle/check) |
 
 ## What's Done
-- Multi-step registration form (Contact → Guests → Meals → Extras → Review)
-- Live running total updates as selections change (updates on step navigation)
-- Chapter dropdown and affiliations checkboxes populated from sheets
+- **Email-first flow**: Enter email → auto-lookup → branches to paid status / pre-filled edit / new registration
+- Paid registrations show inline status with "contact organizer for changes" message
+- Unpaid registrations pre-fill all fields (name, chapter, affiliations, meals, raffle, donation, guests)
+- New registrations show "Starting a new one!" banner
+- **Precompiled form data**: `regenerateFormData()` stores sheet data in Script Properties for fast page loads
+- Multi-step form: Email → Contact → Guests → Meals → Extras → Review
+- Live running total on Extras and Review steps
+- Chapter dropdown and affiliations checkboxes from sheets
 - Configurable field labels/descriptions from Fields sheet
-- Auto-calculated registration count (1 + number of guests)
-- Special meal requests on the Meals step (not Extras)
-- Donation options from Pricing sheet (Patron/Patriot/Minuteman + Custom Amount)
-- Donation note with EIN 91-1167420 from Config
-- Stripe Checkout Sessions API integration (itemized cart with CC fee)
-- StripeTestMode toggle in Config sheet (uses STRIPE_TEST_KEY or STRIPE_SECRET_KEY from Script Properties)
+- Donation options from Pricing sheet (auto-appends price to description)
+- Raffle price hint ("$25 each") from Pricing sheet
+- Stripe Checkout Sessions API with itemized cart (Registration & Meals, Raffle, Donation w/ EIN, CC Fee)
+- StripeTestMode toggle in Config sheet
 - Confirmation page with 3 payment buttons: Mail a Check, Send Zelle (with QR), Pay with Card
-- Post-Stripe redirect shows green "Payment Received" page
+- Post-Stripe green "Payment Received" page → redirects to main form
 - Confirmation emails (plain text + HTML) with payment instructions
-- Status lookup page by email (auto-lookup via URL parameter)
 - Stripe webhook handler (`doPost`) for automatic payment reconciliation
-- Manual payment recording function for Zelle/check
+- Meal selections stored as JSON in MealSelections column for pre-fill
 - Registration editing (same email overwrites existing row)
 - Registration cutoff date support
-- Pre-fill form from existing registration via "Look up previous registration" button
-- Restores: name, phone, chapter, office/title, lodging, affiliations, raffle, donation, special requests, guests
-- Edit link hidden on Status page when registration is paid
-- Error isolation: Stripe/email failures don't block registration submission
-- Templated HTML for URL parameter passing between pages
+- Error isolation: Stripe/email failures don't block registration
 - Anonymous access (ANYONE_ANONYMOUS) for Stripe webhook POST
+- Status page still exists for direct URL access
 
 ## What's Next / TODOs
-1. **Combine Registration+Meals into one Stripe line item** — keeps it to 4 items max (Reg+Meals, Raffle, Donation, CC Fee) matching budget categories
-2. **Add "Check registration status" button** — second button on first page alongside "Look up previous registration", goes directly to status page with email pre-filled
-3. **Fix meal pre-fill on lookup** — meals are now stored as JSON in MealSelections column (col R), but need to add the `MealSelections` header to the Registrations sheet. Code already saves/restores them.
-4. **Raffle price hint** — add back the "$25 each" hint text (element id was missing)
-5. **Stripe receipt emails** — enable in Stripe Dashboard → Settings → Emails → Successful payments (only works in live mode)
-6. **View Registration Status link on Confirm page** — currently broken, needs testing after template fix
+1. **Update email page wording** — "your email is your registration ID" is confusing since we also assign a numeric Registration ID. Reword to clarify email is for lookup/login, Registration ID is for payment reference. Add note about checking spam folders for emails from registration@washingtonsar.org.
+2. **Friendlier payment status** — "Paid - Stripe" is meaningless to registrants. Show payment details like "Visa 4242" (available from Stripe webhook `payment_method_details`). For manual payments, allow "Check 1234" or "Zelle 5/13" style entries.
+3. **Admin workflow for manual payments** — need an easy way to record Zelle/check payments (currently `recordManualPayment` exists but no UI). Could be a sidebar in the spreadsheet or a simple admin page.
+4. **New Stripe account** — set up fresh account separate from Donorbox when ready (see Go-Live Checklist below).
+5. **Meal pre-fill testing** — MealSelections header is in sheet; needs a fresh registration with meals to verify restore works on re-entry.
+6. **Running total on meals step** — was in early design, currently only shows on Extras/Review steps.
 
 ## Go-Live Checklist
 When ready to switch from test to production:

@@ -213,20 +213,14 @@
   var stepNames = ['Email', 'Contact', 'Guests', 'Meals', 'Extras', 'Review'];
   var guests = [];
 
-  google.script.run
-    .withSuccessHandler(function(raw) {
-      try {
-        var data = typeof raw === 'string' ? JSON.parse(raw) : raw;
-        if (!data) throw new Error('No data returned');
-        initForm(data);
-      } catch(err) {
-        document.getElementById('loadingSpinner').innerHTML = 'Error: ' + err.message;
-      }
-    })
-    .withFailureHandler(function(e) {
-      document.getElementById('loadingSpinner').innerHTML = 'Error loading form: ' + e.message;
-    })
-    .getFormData();
+  // Use inlined form data (injected at serve time) — no server round-trip needed
+  try {
+    var data = _inlineFormData;
+    if (!data) throw new Error('No data returned');
+    initForm(data);
+  } catch(err) {
+    document.getElementById('loadingSpinner').innerHTML = 'Error: ' + err.message;
+  }
 
   function initForm(data) {
     formData = data;

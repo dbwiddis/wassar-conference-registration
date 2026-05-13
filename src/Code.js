@@ -40,7 +40,10 @@ function doGet(e) {
     default:
       var indexHtml = HtmlService.createHtmlOutputFromFile('Index');
       var indexEmail = params.email || '';
-      var indexContent = indexHtml.getContent().replace('/*PARAMS*/', 'var _urlEmail="' + indexEmail.replace(/"/g, '') + '";');
+      var formDataJson = getFormData();
+      var indexContent = indexHtml.getContent().replace('/*PARAMS*/',
+        'var _urlEmail="' + indexEmail.replace(/"/g, '') + '";' +
+        'var _inlineFormData=' + formDataJson + ';');
       return HtmlService.createHtmlOutput(indexContent).setTitle('Conference Registration')
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }

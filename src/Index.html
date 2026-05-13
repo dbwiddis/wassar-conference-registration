@@ -84,9 +84,16 @@
       <!-- Step 0: Email -->
       <div class="form-section active" data-step="0">
         <h3>Enter Your Email Address</h3>
-        <p style="margin-bottom:16px;font-size:14px;color:#555">
-          Your email is your registration ID. All confirmations and payment links will be sent to this address.
-          Look for emails from <strong>registration@washingtonsar.org</strong>.
+        <p style="margin-bottom:12px;font-size:14px;color:#555">
+          Your email is used to look up your registration. Entering it will:
+        </p>
+        <ul style="margin:0 0 16px 20px;font-size:14px;color:#555;line-height:1.6">
+          <li><strong>New?</strong> Start a new registration</li>
+          <li><strong>Registered but not paid?</strong> Load your registration for editing</li>
+          <li><strong>Already paid?</strong> Show your confirmation status</li>
+        </ul>
+        <p style="margin-bottom:16px;font-size:13px;color:#888">
+          Confirmations and payment links come from <strong>registration@washingtonsar.org</strong> — check your spam folder if you don't see them.
         </p>
         <div class="form-group">
           <label class="required" id="lbl-email">Email Address</label>
@@ -361,6 +368,10 @@
           '<p><strong>Registration ID:</strong> ' + esc(reg.RegistrationID) + '</p>' +
           '<p><strong>Name:</strong> ' + esc(reg.Name) + '</p>' +
           '<p><strong>Status:</strong> ' + esc(reg.PaymentStatus) + '</p>' +
+          '<p><strong>Amount Paid:</strong> $' + Number(reg.AmountPaid || reg.TotalDue || 0).toFixed(2) + '</p>' +
+          (reg.Donation && formData.pricing[reg.Donation] ? '<div style="margin-top:12px;padding:12px;background:#fff;border:1px solid #27ae60;border-radius:4px">' +
+            '<p style="margin:0;font-size:13px"><strong>Tax-Deductible Donation:</strong> $' + formData.pricing[reg.Donation].price.toFixed(2) + '</p>' +
+            '<p style="margin:4px 0 0;font-size:12px;color:#555">' + (config.DonationNote || 'EIN: 91-1167420') + '</p></div>' : '') +
           '<p style="margin-top:12px;font-size:13px;color:#555">Need to make changes? Contact ' +
           (config.ConferenceContact || 'the conference organizer') + '</p></div>';
         document.getElementById('btnNext').style.display = 'none';

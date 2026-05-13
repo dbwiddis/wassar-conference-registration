@@ -164,6 +164,32 @@ function handleStripeWebhook(postData) {
       return { status: 'error', message: 'No client_reference_id' };
     }
 
+    // Get payment method details (card brand + last4)
+    var paymentLabel = 'Card';
+    try {
+      var piId = session.payment_intent;
+      if (piId) {
+        var testMode = String(getConfigValue('StripeTestMode')).trim().toUpperCase();
+        var propKey = (testMode === 'TRUE') ? 'STRIPE_TEST_KEY' : 'STRIPE_SECRET_KEY';
+        var secretKey = PropertiesService.getScriptProperties().getProperty(propKey);
+        if (secretKey) {
+          var piResp = UrlFetchApp.fetch('https://api.stripe.com/v1/payment_intents/' + piId, {
+            headers: { 'Authorization': 'Basic ' + Utilities.base64Encode(secretKey + ':') },
+            muteHttpExceptions: true
+          });
+          var pi = JSON.parse(piResp.getContentText());
+          if (pi.charges && pi.charges.data && pi.charges.data[0]) {
+            var card = pi.charges.data[0].payment_method_details && pi.charges.data[0].payment_method_details.card;
+            if (card) {
+              paymentLabel = (card.brand || 'Card').charAt(0).toUpperCase() + (card.brand || '').slice(1) + ' ' + card.last4;
+            }
+          }
+        }
+      }
+    } catch(e) {
+      Logger.log('Could not fetch card details: ' + e.message);
+    }
+
     // Record payment
     var paymentSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Payments');
     paymentSheet.appendRow([
@@ -176,7 +202,7 @@ function handleStripeWebhook(postData) {
     ]);
 
     // Update registration status
-    updatePaymentStatus(registrationId, 'Paid - Stripe', amountPaid);
+    updatePaymentStatus(registrationId, 'Paid - ' + paymentLabel, amountPaid);
 
     return { status: 'ok', registrationId: registrationId };
   } catch (e) {

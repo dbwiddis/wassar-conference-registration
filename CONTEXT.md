@@ -113,6 +113,13 @@ Then update `~/.clasprc.json` with the new tokens.
 3. **Email not pre-filling after Stripe payment** — known limitation of Apps Script iframe sandboxing.
 4. **Optional: migrate hosting** — Firebase/Cloudflare/Vercel would eliminate cold start (~$0/month at this scale) but adds deployment complexity.
 
+## Custom Domain
+- **URL**: `registration.wassarccc.org` (iframe wrapper hosted on GitHub Pages)
+- **GitHub Pages**: serves `docs/index.html` from the `master` branch
+- **DNS**: CNAME `registration` → `dbwiddis.github.io` (on Cloudflare)
+- **Known limitation**: Multi-account Google users (logged into multiple Google accounts simultaneously) may see an error. Works fine for single-account users and incognito. This is an unfixable Google Apps Script platform bug.
+- **GCP Project**: `509283132994` (wassar-conference-registration) — required for external access from Workspace account. OAuth consent screen set to External + Published.
+
 ## Go-Live Checklist
 1. In Config sheet, change `StripeTestMode` from `TRUE` to `FALSE`
 2. Complete Stripe account activation if not done (business verification, bank account for payouts)

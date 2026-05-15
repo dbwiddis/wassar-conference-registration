@@ -114,11 +114,14 @@ Then update `~/.clasprc.json` with the new tokens.
 4. **Optional: migrate hosting** — Firebase/Cloudflare/Vercel would eliminate cold start (~$0/month at this scale) but adds deployment complexity.
 
 ## Custom Domain
-- **URL**: `registration.wassarccc.org` (iframe wrapper hosted on GitHub Pages)
+- **Test URL**: `registration.wassarccc.org` (iframe wrapper hosted on GitHub Pages)
 - **GitHub Pages**: serves `docs/index.html` from the `master` branch
-- **DNS**: CNAME `registration` → `dbwiddis.github.io` (on Cloudflare)
-- **Known limitation**: Multi-account Google users (logged into multiple Google accounts simultaneously) may see an error. Works fine for single-account users and incognito. This is an unfixable Google Apps Script platform bug.
+- **DNS**: CNAME `registration` → `washington-sar.github.io` (on Cloudflare, DNS only/grey cloud)
+- **Key fix**: Use `/a/washingtonsar.org/` in the Apps Script URL to resolve multi-account Google login issues. Without this, users logged into multiple Google accounts see an error.
+- **Iframe URL**: `https://script.google.com/a/washingtonsar.org/macros/s/AKfycbw1YMCC6oUsruVPvPmRLVLBMr5Mbbog9T1EWX9DQpaJVMkmBeEzjhSHzSwOq3esk78D/exec`
+- **Production**: Can embed the same iframe on the main washingtonsar.org website
 - **GCP Project**: `509283132994` (wassar-conference-registration) — required for external access from Workspace account. OAuth consent screen set to External + Published.
+- **Repository**: Transferred to `washington-sar` org: https://github.com/washington-sar/wassar-conference-registration
 
 ## Go-Live Checklist
 1. In Config sheet, change `StripeTestMode` from `TRUE` to `FALSE`

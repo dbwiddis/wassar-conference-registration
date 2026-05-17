@@ -123,6 +123,60 @@ Then update `~/.clasprc.json` with the new tokens.
 - **GCP Project**: `509283132994` (wassar-conference-registration) — required for external access from Workspace account. OAuth consent screen set to External + Published.
 - **Repository**: Transferred to `washington-sar` org: https://github.com/washington-sar/wassar-conference-registration
 
+## Planned: Email OTP Authorization
+
+**Status:** Specified, not yet implemented
+
+### Problem
+The current email-first entry point exposes personal information (names, phone numbers), medical information (food allergies), and payment details to anyone who knows a registrant's email address.
+
+### Flow
+```
+1. User enters email address
+2. System checks registration status:
+
+   NO REGISTRATION EXISTS:
+     → Proceed directly to new registration form (no change)
+
+   PAID:
+     → On screen: "You're registered and paid. To make changes, contact XX at YY"
+     → Email sent to user: full registration details + payment amount/date
+     → No sensitive data shown on screen
+
+   UNPAID (in-progress):
+     → Generate 6-digit OTP, email it to user
+     → Show "Enter your verification code" screen
+     → Code expires after 10-15 minutes
+     → On valid code: proceed to view/edit registration
+```
+
+### Design Decisions
+- No OTP for new registrations — nothing to protect yet
+- No OTP for paid registrations — screen shows only non-sensitive confirmation + contact info; full details emailed
+- OTP only for in-progress registrations where editing is needed
+- No rate limiting; code expiration is sufficient
+- Paid confirmation email includes full registration details + payment amount
+
+### Changes From Current Behavior
+| Scenario | Current | New |
+|----------|---------|-----|
+| New email | → registration form | → registration form (same) |
+| Paid email | → shows full details on screen | → generic confirmation on screen + details emailed |
+| Unpaid email | → shows/edits registration directly | → OTP gate → shows/edits registration |
+
+### Implementation Pieces
+1. Modify the "paid" branch: strip sensitive details from screen, add confirmation email send
+2. Add OTP to "unpaid" branch: code generation, email send, verification screen, cache storage
+3. New HTML: small "enter your verification code" form
+4. New functions: `sendVerificationCode(email)`, `verifyCode(email, code)`, `sendPaidConfirmationEmail(email)`
+
+### Technical Notes
+- `CacheService.getScriptCache()` for OTP storage (auto-expires, no cleanup)
+- `GmailApp.sendEmail()` for codes and confirmations
+- Code generation: `Math.floor(100000 + Math.random() * 900000)`
+- Cache key: `otp_[email]` with 600-900s TTL
+- After verification, set `verified_[email]` cache key to carry auth through session
+
 ## Go-Live Checklist
 1. In Config sheet, change `StripeTestMode` from `TRUE` to `FALSE`
 2. Complete Stripe account activation if not done (business verification, bank account for payouts)

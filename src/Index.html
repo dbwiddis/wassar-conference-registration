@@ -343,9 +343,9 @@
 
     google.script.run.withSuccessHandler(function(raw) {
       document.getElementById('btnNext').disabled = false;
-      var reg = raw ? JSON.parse(raw) : null;
-      if (!reg) {
-        // New registration — proceed to contact
+      var result = JSON.parse(raw);
+      var config = formData.config || {};
+      if (!result.exists) {
         statusEl.style.display = 'none';
         document.getElementById('prefillBanner').style.display = 'block';
         document.getElementById('prefillBanner').style.background = '#f0f8ff';
@@ -354,38 +354,68 @@
         document.getElementById('prefillBanner').textContent = 'No existing registration found. Starting a new one!';
         showStep(1);
         window.scrollTo(0, 0);
-      } else if (reg.PaymentStatus && reg.PaymentStatus.toString().toLowerCase().indexOf('paid') >= 0 && reg.PaymentStatus.toString().toLowerCase().indexOf('unpaid') < 0) {
-        // Paid — show status inline, no editing
-        var config = formData.config;
+      } else if (result.isPaid) {
         statusEl.innerHTML = '<div style="background:#d4edda;border:1px solid #27ae60;border-radius:4px;padding:16px;margin-top:12px">' +
-          '<h3 style="color:#155724;margin-bottom:8px">✓ Registration Complete & Paid</h3>' +
-          '<p><strong>Registration ID:</strong> ' + esc(reg.RegistrationID) + '</p>' +
-          '<p><strong>Name:</strong> ' + esc(reg.Name) + '</p>' +
-          '<p><strong>Status:</strong> ' + esc(reg.PaymentStatus) + '</p>' +
-          '<p><strong>Amount Paid:</strong> $' + Number(reg.AmountPaid || reg.TotalDue || 0).toFixed(2) + '</p>' +
-          (reg.Donation ? (function() {
-            var donAmt = formData.pricing[reg.Donation] ? formData.pricing[reg.Donation].price : Number(reg.Donation) || 0;
-            if (!donAmt) return '';
-            return '<div style="margin-top:12px;padding:12px;background:#fff;border:1px solid #27ae60;border-radius:4px">' +
-              '<p style="margin:0;font-size:13px"><strong>Tax-Deductible Donation:</strong> $' + donAmt.toFixed(2) + '</p>' +
-              '<p style="margin:4px 0 0;font-size:12px;color:#555">' + (config.DonationNote || 'EIN: 91-1167420') + '</p></div>';
-          })() : '') +
+          '<h3 style="color:#155724;margin-bottom:8px">✓ You\'re Registered and Paid!</h3>' +
+          '<p>Your full registration details and payment confirmation have been emailed to <strong>' + esc(email) + '</strong>.</p>' +
           '<p style="margin-top:12px;font-size:13px;color:#555">Need to make changes? Contact ' +
           (config.ConferenceContact || 'the conference organizer') + '</p></div>';
         document.getElementById('btnNext').style.display = 'none';
         document.getElementById('btnBack').style.visibility = 'hidden';
+        google.script.run.sendPaidConfirmationEmail(email);
       } else {
-        // Unpaid — pre-fill and proceed
-        statusEl.style.display = 'none';
-        prefillForm(reg);
-        document.getElementById('prefillBanner').style.display = 'block';
-        showStep(1);
-        window.scrollTo(0, 0);
+        statusEl.innerHTML = '<div style="background:#fff3cd;border:1px solid #ffc107;border-radius:4px;padding:16px;margin-top:12px">' +
+          '<h3 style="color:#856404;margin-bottom:8px">Verification Required</h3>' +
+          '<p>A 6-digit verification code has been sent to <strong>' + esc(email) + '</strong>.</p>' +
+          '<p style="font-size:13px;color:#666;margin-top:4px">Check your spam folder if you don\'t see it. Code expires in 10 minutes.</p>' +
+          '<p style="font-size:13px;color:#555;margin-top:4px">Didn\'t get the code? Contact ' + (config.ConferenceContact || 'the conference organizer') + '</p>' +
+          '<div class="form-group" style="margin-top:12px">' +
+          '<input type="text" id="otpCode" placeholder="Enter 6-digit code" maxlength="6" style="font-size:18px;text-align:center;letter-spacing:4px" ' +
+          'onkeypress="if(event.key===\'Enter\'){event.preventDefault();verifyOtp();}">' +
+          '</div>' +
+          '<button class="btn btn-next" onclick="verifyOtp()">Verify</button>' +
+          '<p id="otpError" style="color:#c00;margin-top:8px;display:none"></p></div>';
+        document.getElementById('btnNext').style.display = 'none';
+        google.script.run.sendVerificationCode(email);
       }
     }).withFailureHandler(function(e) {
       document.getElementById('btnNext').disabled = false;
       statusEl.innerHTML = '<p style="color:#c00">Error: ' + e.message + '</p>';
-    }).lookupRegistration(email);
+    }).checkRegistrationStatus(email);
+  }
+
+  function verifyOtp() {
+    var email = document.getElementById('email').value.trim();
+    var code = document.getElementById('otpCode').value.trim();
+    var errEl = document.getElementById('otpError');
+    if (!code) { errEl.textContent = 'Please enter the code.'; errEl.style.display = 'block'; return; }
+    errEl.style.display = 'none';
+    google.script.run.withSuccessHandler(function(raw) {
+      var r = JSON.parse(raw);
+      if (r.status === 'ok') {
+        document.getElementById('emailStatus').innerHTML = '<p style="color:#666">✓ Code verified! Loading your registration...</p>';
+        google.script.run.withSuccessHandler(function(regRaw) {
+          var reg = regRaw ? JSON.parse(regRaw) : null;
+          if (reg && reg.status === 'error') { alert(reg.message); return; }
+          document.getElementById('emailStatus').style.display = 'none';
+          document.getElementById('btnNext').style.display = 'inline-block';
+          if (reg) {
+            prefillForm(reg);
+            document.getElementById('prefillBanner').style.display = 'block';
+          }
+          showStep(1);
+          window.scrollTo(0, 0);
+        }).withFailureHandler(function(e) {
+          alert('Error loading registration: ' + e.message);
+        }).lookupRegistration(email);
+      } else {
+        errEl.textContent = r.message;
+        errEl.style.display = 'block';
+      }
+    }).withFailureHandler(function(e) {
+      errEl.textContent = 'Error: ' + e.message;
+      errEl.style.display = 'block';
+    }).verifyCode(email, code);
   }
 
   function prefillForm(reg) {

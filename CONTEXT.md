@@ -10,8 +10,8 @@ A Google Apps Script web app replacing the old Google Form-based registration fo
 
 ## Google Apps Script Project
 - **Script ID**: `1s60il3Bss9w6E-dz3Ynv5fHcup_M2lSSLpMiZ1MOQzYbP-VWvI9hGj5p`
-- **Deployment ID**: `AKfycbw1YMCC6oUsruVPvPmRLVLBMr5Mbbog9T1EWX9DQpaJVMkmBeEzjhSHzSwOq3esk78D`
-- **Live URL**: `https://script.google.com/macros/s/AKfycbw1YMCC6oUsruVPvPmRLVLBMr5Mbbog9T1EWX9DQpaJVMkmBeEzjhSHzSwOq3esk78D/exec`
+- **Deployment ID**: `AKfycbyRu1YlnDGku8YpPGjllc8QuXtZtt7tnnYqgePLvZIb_wPJQeH7TK-TU2OwHUFp4U2x`
+- **Live URL**: `https://script.google.com/macros/s/AKfycbyRu1YlnDGku8YpPGjllc8QuXtZtt7tnnYqgePLvZIb_wPJQeH7TK-TU2OwHUFp4U2x/exec`
 - **Bound to**: "WSSAR Conference Registration" Google Sheet in washingtonsar.org workspace
 - **Logged in as**: registration@washingtonsar.org
 
@@ -19,7 +19,7 @@ A Google Apps Script web app replacing the old Google Form-based registration fo
 ```bash
 cd ~/wssar-conference-registration/src
 npx clasp push --force
-npx clasp deploy -i AKfycbw1YMCC6oUsruVPvPmRLVLBMr5Mbbog9T1EWX9DQpaJVMkmBeEzjhSHzSwOq3esk78D -d "vN - description"
+npx clasp deploy -i AKfycbyRu1YlnDGku8YpPGjllc8QuXtZtt7tnnYqgePLvZIb_wPJQeH7TK-TU2OwHUFp4U2x -d "vN - description"
 ```
 The `.clasp.json` is in `src/` (not repo root). Always use `--force` on push.
 After deploying, update the version in **Deploy → Manage deployments** in the Apps Script editor.
@@ -118,7 +118,7 @@ Then update `~/.clasprc.json` with the new tokens.
 - **GitHub Pages**: serves `docs/index.html` from the `master` branch
 - **DNS**: CNAME `registration` → `washington-sar.github.io` (on Cloudflare, DNS only/grey cloud)
 - **Key fix**: Use `/a/washingtonsar.org/` in the Apps Script URL to resolve multi-account Google login issues. Without this, users logged into multiple Google accounts see an error.
-- **Iframe URL**: `https://script.google.com/a/washingtonsar.org/macros/s/AKfycbw1YMCC6oUsruVPvPmRLVLBMr5Mbbog9T1EWX9DQpaJVMkmBeEzjhSHzSwOq3esk78D/exec`
+- **Iframe URL**: `https://script.google.com/a/washingtonsar.org/macros/s/AKfycbyRu1YlnDGku8YpPGjllc8QuXtZtt7tnnYqgePLvZIb_wPJQeH7TK-TU2OwHUFp4U2x/exec`
 - **Production**: Can embed the same iframe on the main washingtonsar.org website
 - **GCP Project**: `509283132994` (wassar-conference-registration) — required for external access from Workspace account. OAuth consent screen set to External + Published.
 - **Repository**: Transferred to `washington-sar` org: https://github.com/washington-sar/wassar-conference-registration

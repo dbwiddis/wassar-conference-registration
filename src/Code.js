@@ -259,9 +259,117 @@ function calculateTotal(formData) {
   return total;
 }
 
+// ── OTP Verification ──
+
+function sendVerificationCode(email) {
+  var code = String(Math.floor(100000 + Math.random() * 900000));
+  var cache = CacheService.getScriptCache();
+  cache.put('otp_' + email.toLowerCase(), code, 600);
+  var config = getAllConfig();
+  var eventName = config['EventName'] || 'WSSAR Conference';
+  MailApp.sendEmail({
+    to: email,
+    subject: eventName + ' — Your Verification Code',
+    body: 'Your verification code is: ' + code + '\n\nThis code expires in 10 minutes.\n\nIf you did not request this, please ignore this email.'
+  });
+  return JSON.stringify({ status: 'ok' });
+}
+
+function verifyCode(email, code) {
+  var cache = CacheService.getScriptCache();
+  var key = email.toLowerCase();
+  var attemptsKey = 'otp_attempts_' + key;
+  var attempts = Number(cache.get(attemptsKey)) || 0;
+  if (attempts >= 5) {
+    cache.remove('otp_' + key);
+    return JSON.stringify({ status: 'error', message: 'Too many attempts. Please request a new code.' });
+  }
+  var stored = cache.get('otp_' + key);
+  if (stored && stored === String(code).trim()) {
+    cache.put('verified_' + key, 'true', 1800);
+    cache.remove('otp_' + key);
+    cache.remove(attemptsKey);
+    return JSON.stringify({ status: 'ok' });
+  }
+  cache.put(attemptsKey, String(attempts + 1), 600);
+  return JSON.stringify({ status: 'error', message: 'Invalid or expired code.' });
+}
+
+function isVerified(email) {
+  var cache = CacheService.getScriptCache();
+  return cache.get('verified_' + email.toLowerCase()) === 'true';
+}
+
+function sendPaidConfirmationEmail(email) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Registrations');
+  var data = sheet.getDataRange().getValues();
+  var headers = data[0];
+  var reg = null;
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][2]).toLowerCase() === email.toLowerCase()) {
+      reg = {};
+      for (var j = 0; j < headers.length; j++) reg[headers[j]] = data[i][j];
+      break;
+    }
+  }
+  if (!reg) return;
+  var config = getAllConfig();
+  var eventName = config['EventName'] || 'WSSAR Conference';
+  var guests = getGuestsForRegistration(reg.RegistrationID);
+  var body = 'Here are your registration details for the ' + eventName + ':\n\n' +
+    'Registration ID: ' + reg.RegistrationID + '\n' +
+    'Name: ' + reg.Name + '\n' +
+    'Email: ' + reg.Email + '\n' +
+    (reg.Phone ? 'Phone: ' + reg.Phone + '\n' : '') +
+    (reg.Chapter ? 'Chapter: ' + reg.Chapter + '\n' : '') +
+    (reg.OfficeTitle ? 'Office/Title: ' + reg.OfficeTitle + '\n' : '') +
+    (reg.Affiliations ? 'Affiliations: ' + reg.Affiliations + '\n' : '') +
+    (reg.Lodging ? 'Lodging: ' + reg.Lodging + '\n' : '') +
+    '\nPayment Status: ' + reg.PaymentStatus + '\n' +
+    'Amount Paid: $' + Number(reg.AmountPaid || 0).toFixed(2) + '\n';
+  if (reg.Donation) {
+    var pricing = getPricing();
+    var donAmt = pricing[reg.Donation] ? pricing[reg.Donation].price : (Number(reg.Donation) || 0);
+    if (donAmt > 0) {
+      body += '\n--- Tax-Deductible Donation Receipt ---\n' +
+        'Donation Amount: $' + donAmt.toFixed(2) + '\n' +
+        'Organization: Washington State Society of the Sons of the American Revolution\n' +
+        'EIN: 91-1167420\n' +
+        'No goods or services were provided in exchange for this contribution.\n' +
+        '---------------------------------------\n';
+    }
+  }
+  if (guests.length > 0) {
+    body += '\nGuests:\n';
+    for (var g = 0; g < guests.length; g++) body += '  ' + guests[g].name + '\n';
+  }
+  body += '\nNeed to make changes? Contact ' + (config['ConferenceContact'] || 'the conference organizer') + '\n';
+  MailApp.sendEmail({ to: email, subject: eventName + ' — Your Registration Details', body: body });
+}
+
 // ── Status Lookup ──
 
+function checkRegistrationStatus(email) {
+  try {
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Registrations');
+    var data = sheet.getDataRange().getValues();
+    var headers = data[0];
+    var statusCol = headers.indexOf('PaymentStatus');
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][2]).toLowerCase() === email.toLowerCase()) {
+        var status = String(data[i][statusCol] || '');
+        var isPaid = status.toLowerCase().indexOf('paid') >= 0 && status.toLowerCase().indexOf('unpaid') < 0;
+        return JSON.stringify({ exists: true, isPaid: isPaid });
+      }
+    }
+    return JSON.stringify({ exists: false });
+  } catch (e) {
+    return JSON.stringify({ exists: false, error: e.message });
+  }
+}
+
 function lookupRegistration(email) {
+  if (!isVerified(email)) return JSON.stringify({ status: 'error', message: 'Verification required.' });
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Registrations');
   var data = sheet.getDataRange().getValues();
   var headers = data[0];

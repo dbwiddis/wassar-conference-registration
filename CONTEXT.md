@@ -12,6 +12,9 @@ A Google Apps Script web app replacing the old Google Form-based registration fo
 - **Script ID**: `1s60il3Bss9w6E-dz3Ynv5fHcup_M2lSSLpMiZ1MOQzYbP-VWvI9hGj5p`
 - **Deployment ID**: `AKfycbyRu1YlnDGku8YpPGjllc8QuXtZtt7tnnYqgePLvZIb_wPJQeH7TK-TU2OwHUFp4U2x`
 - **Live URL**: `https://script.google.com/macros/s/AKfycbyRu1YlnDGku8YpPGjllc8QuXtZtt7tnnYqgePLvZIb_wPJQeH7TK-TU2OwHUFp4U2x/exec`
+- **Multi-account URL**: `https://script.google.com/a/washingtonsar.org/macros/s/AKfycbyRu1YlnDGku8YpPGjllc8QuXtZtt7tnnYqgePLvZIb_wPJQeH7TK-TU2OwHUFp4U2x/exec`
+  - Preferred for end users. The `/a/washingtonsar.org/` path resolves Google's multi-account login picker issue. Without it, users logged into multiple Google accounts may see an error.
+  - Use this URL in iframes and any user-facing links.
 - **Bound to**: "WSSAR Conference Registration" Google Sheet in washingtonsar.org workspace
 - **Logged in as**: registration@washingtonsar.org
 
@@ -95,6 +98,8 @@ Then update `~/.clasprc.json` with the new tokens.
 
 ## What's Done
 - **Email-first flow**: Enter email → auto-lookup → paid status / pre-filled edit / new registration
+- **Email OTP verification**: Unpaid registrations require a 6-digit code emailed to the registrant (10-min expiry, 5 attempt limit)
+- **Paid confirmation**: Shows generic "you're registered" on screen; emails full details including tax-deductible donation receipt with EIN and "no goods or services" language
 - **Precompiled + inlined form data**: Zero round-trips for initial page render
 - **Multi-step form**: Email → Contact → Guests → Meals → Extras → Review
 - **Pre-fill on re-entry**: All fields restored including affiliations, meals, raffle, donation, guests
@@ -110,8 +115,7 @@ Then update `~/.clasprc.json` with the new tokens.
 ## What's Next / Future TODOs
 1. **Custom domain**: Set up `conference.washingtonsar.org` → iframe or redirect to Apps Script URL. Coordinate with webmaster.
 2. **Running total on meals step** — currently only shows on Extras/Review steps.
-3. **Email not pre-filling after Stripe payment** — known limitation of Apps Script iframe sandboxing.
-4. **Optional: migrate hosting** — Firebase/Cloudflare/Vercel would eliminate cold start (~$0/month at this scale) but adds deployment complexity.
+3. **Optional: migrate hosting** — Firebase/Cloudflare/Vercel would eliminate cold start (~$0/month at this scale) but adds deployment complexity.
 
 ## Custom Domain
 - **Test URL**: `registration.wassarccc.org` (iframe wrapper hosted on GitHub Pages)
@@ -123,12 +127,12 @@ Then update `~/.clasprc.json` with the new tokens.
 - **GCP Project**: `509283132994` (wassar-conference-registration) — required for external access from Workspace account. OAuth consent screen set to External + Published.
 - **Repository**: Transferred to `washington-sar` org: https://github.com/washington-sar/wassar-conference-registration
 
-## Planned: Email OTP Authorization
+## Email OTP Authorization
 
-**Status:** Specified, not yet implemented
+**Status:** Implemented (v63)
 
 ### Problem
-The current email-first entry point exposes personal information (names, phone numbers), medical information (food allergies), and payment details to anyone who knows a registrant's email address.
+The email-first entry point previously exposed personal information (names, phone numbers), medical information (food allergies), and payment details to anyone who knows a registrant's email address.
 
 ### Flow
 ```
@@ -140,13 +144,14 @@ The current email-first entry point exposes personal information (names, phone n
 
    PAID:
      → On screen: "You're registered and paid. To make changes, contact XX at YY"
-     → Email sent to user: full registration details + payment amount/date
+     → Email sent to user: full registration details + payment amount/date + tax receipt
      → No sensitive data shown on screen
 
    UNPAID (in-progress):
      → Generate 6-digit OTP, email it to user
      → Show "Enter your verification code" screen
-     → Code expires after 10-15 minutes
+     → Code expires after 10 minutes
+     → Max 5 attempts before code is invalidated
      → On valid code: proceed to view/edit registration
 ```
 
@@ -154,28 +159,16 @@ The current email-first entry point exposes personal information (names, phone n
 - No OTP for new registrations — nothing to protect yet
 - No OTP for paid registrations — screen shows only non-sensitive confirmation + contact info; full details emailed
 - OTP only for in-progress registrations where editing is needed
-- No rate limiting; code expiration is sufficient
-- Paid confirmation email includes full registration details + payment amount
+- 5 failed attempts invalidates the code (brute force protection)
+- Paid confirmation email includes full registration details + payment amount + tax-deductible donation receipt
 
-### Changes From Current Behavior
-| Scenario | Current | New |
-|----------|---------|-----|
-| New email | → registration form | → registration form (same) |
-| Paid email | → shows full details on screen | → generic confirmation on screen + details emailed |
-| Unpaid email | → shows/edits registration directly | → OTP gate → shows/edits registration |
-
-### Implementation Pieces
-1. Modify the "paid" branch: strip sensitive details from screen, add confirmation email send
-2. Add OTP to "unpaid" branch: code generation, email send, verification screen, cache storage
-3. New HTML: small "enter your verification code" form
-4. New functions: `sendVerificationCode(email)`, `verifyCode(email, code)`, `sendPaidConfirmationEmail(email)`
-
-### Technical Notes
-- `CacheService.getScriptCache()` for OTP storage (auto-expires, no cleanup)
-- `GmailApp.sendEmail()` for codes and confirmations
-- Code generation: `Math.floor(100000 + Math.random() * 900000)`
-- Cache key: `otp_[email]` with 600-900s TTL
-- After verification, set `verified_[email]` cache key to carry auth through session
+### Implementation
+- `checkRegistrationStatus(email)` — returns `{exists, isPaid}` without exposing sensitive data
+- `sendVerificationCode(email)` — generates 6-digit code, stores in CacheService (600s TTL), emails it
+- `verifyCode(email, code)` — validates OTP with attempt counting, sets `verified_` cache key (1800s TTL)
+- `isVerified(email)` — checks if session is verified (gates `lookupRegistration`)
+- `sendPaidConfirmationEmail(email)` — emails full details including tax-deductible donation receipt
+- OTP UI is inline in Index.html (no separate HTML file needed)
 
 ## Go-Live Checklist
 1. In Config sheet, change `StripeTestMode` from `TRUE` to `FALSE`
